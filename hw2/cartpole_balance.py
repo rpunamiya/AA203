@@ -60,7 +60,15 @@ def reference(t: float) -> np.ndarray:
 
     # PART (d) ##################################################
     # INSTRUCTIONS: Compute the reference state for a given time
-    raise NotImplementedError()
+    s_bar = np.array(
+        [
+            a * np.sin(2 * np.pi * t / T),  # x
+            np.pi,  # theta
+            (2 * np.pi * a / T) * np.cos(2 * np.pi * t / T),  # x_dot
+            0.0,  # theta_dot
+        ]
+    )
+    return s_bar
     # END PART (d) ##############################################
 
 
@@ -82,11 +90,22 @@ def ricatti_recursion(
     max_iters = 1000  # Riccati recursion maximum number of iterations
     P_prev = np.zeros((n, n))  # initialization
     converged = False
+    # Ensure A, B, Q, R are numpy arrays
+    A = np.array(A)
+    B = np.array(B)
+    Q = np.array(Q)
+    R = np.array(R)
+
     for i in range(max_iters):
         # PART (b) ##################################################
         # INSTRUCTIONS: Apply the Ricatti equation until convergence
-        K = NotImplemented
-        raise NotImplementedError()
+        K = -np.linalg.inv(R + B.T @ P_prev @ B) @ (B.T @ P_prev @ A)
+        P = Q + A.T @ P_prev @ A + A.T @ P_prev @ B @ K
+
+        converged = np.linalg.norm(P - P_prev) < eps
+        if converged:
+            break
+        P_prev = P
         # END PART (b) ##############################################
     if not converged:
         raise RuntimeError("Ricatti recursion did not converge!")
@@ -119,9 +138,13 @@ def simulate(
     # PART (c) ##################################################
     # INSTRUCTIONS: Complete the function to simulate the cartpole system
     # Hint: use the cartpole wrapper above with odeint
-    s = NotImplemented
-    u = NotImplemented
-    raise NotImplementedError()
+    s = np.zeros((t.size, n))
+    u = np.zeros((t.size, m))
+    s[0] = s0
+
+    for i in range(0,t.size-1):
+        u[i] = u_ref + K @ (s[i] - s_ref[i])
+        s[i+1] = odeint(cartpole_wrapper, s[i], t[i:i+2], (u[i],))[1]
     # END PART (c) ##############################################
     return s, u
 
@@ -136,8 +159,8 @@ def compute_lti_matrices() -> tuple[np.ndarray, np.ndarray]:
     """
     # PART (a) ##################################################
     # INSTRUCTIONS: Construct the A and B matrices
-    A = NotImplemented
-    B = NotImplemented
+    A = [[1.0, 0.0, dt, 0.0], [0.0, 1.0, 0.0, dt], [0.0, mp*g/mc * dt, 1.0, 0.0], [0.0, (mc + mp)*g/(mc*L) * dt, 0.0, 1.0]]
+    B = [[0.0], [0.0], [dt / mc], [dt / (mc * L)]]
     # END PART (a) ##############################################
     return A, B
 
