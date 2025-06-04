@@ -81,7 +81,20 @@ class PlanarQuadrotor:
         # PART (a): WRITE YOUR CODE BELOW ###############################################
         # You may find `jnp.where` to be useful; see corresponding numpy docstring:
         # https://numpy.org/doc/stable/reference/generated/numpy.where.html
-        raise NotImplementedError
+        _, p_vy, _, p_omega = grad_value
+        phi = state[2]
+
+        # Coefficient definitions
+        a = (jnp.cos(phi) / self.m)   * p_vy          # from (T1 + T2)
+        b = (self.l        / self.Iyy) * p_omega       # from (T2 - T1)
+
+        c1 = a - b
+        c2 = a + b
+
+        T1 = jnp.where(c1 > 0, 0.0, self.max_thrust_per_prop)
+        T2 = jnp.where(c2 > 0, 0.0, self.max_thrust_per_prop)
+
+        return jnp.array([T1, T2])
         #################################################################################
 
     def hamiltonian(self, state, time, value, grad_value):
@@ -123,7 +136,8 @@ def target_set(state):
         A scalar, nonpositive iff the state is in the target set.
     """
     # PART (b): WRITE YOUR CODE BELOW ###############################################
-    raise NotImplementedError
+    y, v_y, phi, omega = state
+    return jnp.max(jnp.array([3-y, y-7, -1-v_y, v_y-1, -np.pi/12-phi, phi-np.pi/12, -1-omega, omega-1]))
     #################################################################################
 
 
@@ -137,7 +151,8 @@ def envelope_set(state):
         A scalar, nonpositive iff the state is in the operational envelope.
     """
     # PART (c): WRITE YOUR CODE BELOW ###############################################
-    raise NotImplementedError
+    y, v_y, _, omega = state
+    return jnp.max(jnp.array([1-y, y-9, -6-v_y, v_y-6, -8-omega, omega-8]))
     #################################################################################
 
 

@@ -40,6 +40,17 @@ def do_mpc(
     cost = 0.0
     constraints = []
 
+    constraints.append(x_cvx[0,:] == x0)
+
+    for t in range(N):
+        cost += cvx.quad_form(x_cvx[t,:], Q) + cvx.quad_form(u_cvx[t,:], R)
+        constraints.append(x_cvx[t+1,:] == A @ x_cvx[t,:] + B @ u_cvx[t,:])
+        constraints.append(cvx.norm(x_cvx[t,:], 'inf') <= rx)
+        constraints.append(cvx.norm(u_cvx[t,:], 'inf') <= ru)
+
+    cost += cvx.quad_form(x_cvx[N,:], P)
+    constraints.append(cvx.norm(x_cvx[N,:], 'inf') <= rf)
+
     # END PART (a) ############################################################
 
     prob = cvx.Problem(cvx.Minimize(cost), constraints)
@@ -77,7 +88,22 @@ def compute_roa(
             #               infeasible or the state has converged close enough
             #               to the origin. If the state converges, flag the
             #               corresponding entry of `roa` with a value of `1`.
-
+            feasible = True
+            for step in range(max_steps):
+                x_mpc, u_mpc, status = do_mpc(x, A, B, P, Q, R, N, rx, ru, rf)
+                if status == 'infeasible':
+                    feasible == False
+                    break
+                x = A @ x + B @ u_mpc[0,:]
+                if np.linalg.norm(x, np.inf) < tol:
+                    roa[i,j] = 1
+                    break
+                if np.any(np.abs(x) > rx):
+                    feasible = False
+                    break
+            
+            if feasible and np.linalg.norm(x, np.inf) < tol:
+                roa[i,j] = 1
             # END PART (b) ####################################################
     return roa
 
