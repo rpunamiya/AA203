@@ -42,7 +42,7 @@ def signed_distances(s, centers, radii):
     # PART (a): YOUR CODE BELOW ###############################################
     # INSTRUCTIONS: Compute the vector of signed distances to each obstacle.
 
-    d = NotImplementedError()
+    d = jnp.linalg.norm(s[..., None, :2] - centers, axis=-1) - radii
 
     # END PART (a) ############################################################
     return d
@@ -55,8 +55,8 @@ def affinize(f, s, u):
     # PART (b) ################################################################
     # INSTRUCTIONS: Use JAX to affinize `f` around `(s,u)` in two lines.
 
-    A, B = NotImplementedError()
-    c = NotImplementedError()
+    A, B = jax.jacfwd(f, argnums=(0, 1))(s, u)
+    c = f(s, u) - A @ s - B @ u
 
     # END PART (b) ############################################################
     return A, B, c
@@ -83,6 +83,29 @@ def scp_iteration(f, d, s0, s_goal, s_prev, u_prev, P, Q, R):
 
     objective = 0.0
     constraints = []
+    # Initial state constraint
+    constraints.append(s_cvx[0, :] == s0)
+
+    # Cost function
+    for k in range(N):
+        # State cost
+        objective += cvx.quad_form(s_cvx[k, :] - s_goal, Q)
+        # Control cost
+        objective += cvx.quad_form(u_cvx[k, :], R)
+
+        # Dynamics constraints
+        constraints.append(
+            s_cvx[k + 1, :] == Af[k,:] @ s_cvx[k,:] + Bf[k,:] @ u_cvx[k,:] + cf[k,:]
+        )
+
+        # Obstacle avoidance constraints
+        constraints.append(
+            Ad[k,:] @ s_cvx[k,:] + cd[k,:] >= 0
+        )
+
+    # Terminal state cost
+    constraints.append(Ad[N, :] @ s_cvx[N, :] + cd[N, :] >= 0)
+    objective += cvx.quad_form(s_cvx[N, :] - s_goal, P)
 
     # END PART (e) ############################################################
 
@@ -163,8 +186,8 @@ radii = np.array([0.5, 0.5])
 
 # PART (g): CHANGE THE PARAMETERS BELOW #######################################
 
-N = 5  # MPC horizon
-N_scp = 5  # maximum number of SCP iterations
+N = 15  # MPC horizon
+N_scp = 2  # maximum number of SCP iterations
 
 # END PART (g) ################################################################
 
@@ -182,11 +205,25 @@ for t in tqdm(range(T)):
 
     # Solve the MPC problem at time `t`
     # Hint: You should call `solve_obstacle_avoidance_scp` here
-    s_mpc[t], u_mpc[t] = NotImplementedError()
+    s_mpc[t], u_mpc[t] = solve_obstacle_avoidance_scp(
+        f,
+        d,
+        s0=s,
+        s_goal=s_goal,
+        N=N,
+        P=P,
+        Q=Q,
+        R=R,
+        eps=eps,
+        max_iters=N_scp,
+        s_init=s_init,
+        u_init=u_init,
+        convergence_error=False,
+    )
 
     # Push the state `s` forward in time with a closed-loop MPC input
     # Hint: You should call `f` here
-    s = NotImplementedError()
+    s = f(s, u_mpc[t, 0])
 
     # END PART (f) ############################################################
 

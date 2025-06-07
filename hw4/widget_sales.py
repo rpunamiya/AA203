@@ -82,6 +82,17 @@ for k in tqdm(range(1, num_epochs + 1)):
     # ####################### PART (a): YOUR CODE BELOW #######################
 
     # INSTRUCTIONS: Update `Q` using Q-learning.
+    for idx in shuffled_indices:
+        s_t = int(log["s"][idx])
+        a_t = int(log["a"][idx])
+        r_t = log["r"][idx]
+
+        # Sample next state and action
+        s_next = int(log["s"][idx + 1] if idx + 1 < T else s_t)
+        a_idx = np.where(A == a_t)[0][0]  # Get index of action a_t
+
+        # Update Q-value using the Q-learning update rule
+        Q[s_t, a_idx] += α * (r_t + γ * np.max(Q[s_next]) - Q[s_t, a_idx])
 
     # ############################# END PART (a) ##############################
 
@@ -101,6 +112,16 @@ for k in tqdm(range(max_iters)):
     # ####################### PART (b): YOUR CODE BELOW #######################
 
     # INSTRUCTIONS: Update `Q_vi` using value iteration.
+    for s in range(S.size):
+        for a in range(A.size):
+            # Compute expected value for each action
+            expected_value = 0.0
+            for d, p in zip(D, P):
+                s_next = transition(s, A[a], d)
+                expected_value += p * (reward(s, A[a], d) + γ * np.max(Q_vi[s_next]))
+
+            # Update Q-value for state-action pair
+            Q_vi[s, a] = expected_value
 
     # ############################# END PART (b) ##############################
 
@@ -151,10 +172,12 @@ plt.show()
 T = 5 * 365
 
 # TODO: replace the next four lines with your code
-a_opt_ql = np.zeros(S.size)
-profit_ql = np.zeros(T)
-a_opt_vi = np.zeros(S.size)
-profit_vi = np.zeros(T)
+a_opt_ql = A[np.argmax(Q, axis=1)]  # Optimal actions from Q-learning
+s_ql, a_ql, r_ql = simulate(rng, lambda s: a_opt_ql[int(s)], T)  # Simulate Q-learning policy
+profit_ql = np.cumsum(r_ql)  # Cumulative profit from Q-learning
+a_opt_vi = A[np.argmax(Q_vi, axis=1)]  # Optimal actions from value iteration
+s_vi, a_vi, r_vi = simulate(rng, lambda s: a_opt_vi[int(s)], T)  # Simulate value iteration policy
+profit_vi = np.cumsum(r_vi)  # Cumulative profit from value iteration
 
 # ############################### END PART (c) ################################
 

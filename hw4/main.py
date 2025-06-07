@@ -43,7 +43,7 @@ if __name__ == "__main__":
     parser.add_argument("--action-dim", type=int, required=True, help="the dimension of the cartpole action space.")
     parser.add_argument("--use-gpu", action='store_true', help="whether to run training on your system's gpu, if available, (a gpu is not necessary to complete this assignment!).")
     parser.add_argument("--mode", type=str, choices=['train', 'test'], default="test", help="mode to run: 'train' or 'test'")
-    parser.add_argument("--visualization", action='store_true', help="whether to visualize the cartpole environment during the rollout.")
+    parser.add_argument("--visualization", action='store_false', help="whether to visualize the cartpole environment during the rollout.")
     parser.add_argument("--checkpoint-path", type=str, help="path to the checkpoint of a trained policy network (for test mode)")
     
     main(parser.parse_args())
